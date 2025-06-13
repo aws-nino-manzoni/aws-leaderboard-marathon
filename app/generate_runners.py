@@ -2,9 +2,9 @@ import requests
 import random
 import time
 
-API_URL = "http://<your-public-ip>:5000/submit"  # 🔁 ZAMENJAJ z dejanskim IP!
+API_URL = "http://<YOUR-PUBLIC-IP>:5000/submit"  # 🔁 Zamenjaj s tvojim IP naslovom
 
-NAMES = ["Nino", "Tina", "Matej", "Anja", "Jure", "Sara", "Luka", "Petra", "David", "Eva", "Ana"]
+NAMES = ["Nino", "Tina", "Matej", "Anja", "Jure", "Sara", "Luka", "Petra", "David", "Eva"]
 DISTANCES = ["10km", "21km", "42km"]
 CHECKPOINTS_BY_DISTANCE = {
     "10km": ["5km", "10km"],
@@ -42,10 +42,6 @@ def generate_runner_data():
 
     return {
         "name": name,
-        "age": age,
-        "gender": gender,
-        "distance": distance,
-        "start_number": start_number,
         "checkpoints": times
     }
 

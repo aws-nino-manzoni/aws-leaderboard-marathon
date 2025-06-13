@@ -2,7 +2,7 @@ import requests
 import random
 import time
 
-API_URL = "http://3.124.1.132:5000/submit"  # ⬅️ ZAMENJAJ s svojim IP naslovom
+API_URL = "http://3.124.1.132:5000/submit"  # ⬅️ Zamenjaj s svojim IP naslovom
 
 NAMES = ["Nino", "Tina", "Matej", "Anja", "Jure", "Sara", "Luka", "Petra", "David", "Eva"]
 DISTANCES = ["10km", "21km", "42km"]
@@ -34,7 +34,7 @@ def generate_runner_data():
             segment_time = random.randint(10 * 60, 20 * 60)
 
         total_time += segment_time
-        print(f"{name} | {cp}: segment={segment_time}, total={total_time}")  # 🔍 izpis
+        print(f"{name} | {cp}: segment={segment_time}, total={total_time}")
         times[cp] = total_time
 
     return {
@@ -52,7 +52,7 @@ def send_checkpoints(runner):
         }
         try:
             res = requests.post(API_URL, json=payload)
-            print(f"Submitted {name} - {cp}: {res.status_code}")
+            print(f"Submitted {name} - {cp}: {res.status_code} | {res.text}")
         except Exception as e:
             print(f"Error submitting {name} - {cp}: {e}")
 

@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 import redis
 
 app = Flask(__name__)
-r = redis.Redis(host='localhost', port=6379, decode_responses=True)
+r = redis.Redis(host='10.0.2.190', port=6379, decode_responses=True)
 
 @app.route('/submit', methods=['POST'])
 def submit():

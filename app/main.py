@@ -8,14 +8,49 @@ r = redis.Redis(host='localhost', port=6379, decode_responses=True)
 def submit():
     data = request.json
     name = data['name']
+    checkpoint = data['checkpoint']
     time = float(data['time'])
-    r.zadd('leaderboard', {name: time})
-    return jsonify({'message': 'Result submitted'}), 200
+
+    r.hset(f'runner:{name}', checkpoint, time)
+    return jsonify({'message': f'Checkpoint {checkpoint} recorded for {name}'}), 200
 
 @app.route('/leaderboard', methods=['GET'])
 def leaderboard():
-    top = r.zrange('leaderboard', 0, -1, withscores=True)
-    return jsonify(top), 200
+    distance_km = {
+        "5km": 5,
+        "10km": 10,
+        "21km": 21.1,
+        "30km": 30,
+        "finish": 42.2
+    }
+
+    runners = []
+    for key in r.scan_iter("runner:*"):
+        name = key.split(":")[1]
+        checkpoints = r.hgetall(key)
+
+        # Najdaljši dosežen checkpoint
+        longest_cp = max(checkpoints.keys(), key=lambda cp: distance_km.get(cp, 0))
+        finish_time = float(checkpoints[longest_cp])
+        km = distance_km.get(longest_cp, 0)
+
+        pace = finish_time / km  # sekund na km
+        pace_min = int(pace // 60)
+        pace_sec = int(pace % 60)
+        pace_formatted = f"{pace_min}:{pace_sec:02d} min/km"
+
+        runners.append({
+            "name": name,
+            "checkpoints": checkpoints,
+            "total_time_sec": finish_time,
+            "distance_km": km,
+            "pace_sec_per_km": round(pace, 2),
+            "pace_formatted": pace_formatted
+        })
+
+    sorted_runners = sorted(runners, key=lambda x: x['total_time_sec'])
+    return jsonify(sorted_runners), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+

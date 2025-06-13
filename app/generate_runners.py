@@ -2,7 +2,7 @@ import requests
 import random
 import time
 
-API_URL = "http://<public-ip-of-flask>:5000/submit"
+API_URL = "http://<your-public-ip>:5000/submit"  # 🔁 ZAMENJAJ z dejanskim IP!
 
 NAMES = ["Nino", "Tina", "Matej", "Anja", "Jure", "Sara", "Luka", "Petra", "David", "Eva", "Ana"]
 DISTANCES = ["10km", "21km", "42km"]
@@ -20,12 +20,25 @@ def generate_runner_data():
     start_number = random.randint(1000, 9999)
 
     checkpoints = CHECKPOINTS_BY_DISTANCE[distance]
-    base_time = 300  # sekunde za prvih 5km
     times = {}
 
+    total_time = 0
     for cp in checkpoints:
-        base_time += random.randint(200, 800)  # dodamo realno variacijo
-        times[cp] = base_time
+        if cp == "5km":
+            segment_time = random.randint(16*60, 50*60)
+        elif cp == "10km":
+            segment_time = random.randint(18*60, 45*60)
+        elif cp == "21km":
+            segment_time = random.randint(40*60, 80*60)
+        elif cp == "30km":
+            segment_time = random.randint(30*60, 60*60)
+        elif cp == "finish":
+            segment_time = random.randint(35*60, 70*60)
+        else:
+            segment_time = random.randint(10*60, 20*60)
+
+        total_time += segment_time
+        times[cp] = total_time
 
     return {
         "name": name,
@@ -44,11 +57,14 @@ def send_checkpoints(runner):
             "checkpoint": cp,
             "time": t
         }
-        res = requests.post(API_URL, json=payload)
-        print(f"{name} - {cp}: {res.status_code}")
+        try:
+            res = requests.post(API_URL, json=payload)
+            print(f"{name} - {cp}: {res.status_code}")
+        except Exception as e:
+            print(f"Error submitting {name} - {cp}: {e}")
 
 if __name__ == "__main__":
-    for _ in range(20):  # ustvari 20 tekačev
+    for _ in range(20):  # generira 20 tekačev
         r = generate_runner_data()
         send_checkpoints(r)
-        time.sleep(0.2)  # rahla pavza, da se podatki lepo obdelajo
+        time.sleep(0.2)

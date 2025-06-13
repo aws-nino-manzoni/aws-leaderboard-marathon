@@ -29,12 +29,15 @@ def leaderboard():
         name = key.split(":")[1]
         checkpoints = r.hgetall(key)
 
-        # Najdaljši dosežen checkpoint
-        longest_cp = max(checkpoints.keys(), key=lambda cp: distance_km.get(cp, 0))
-        finish_time = float(checkpoints[longest_cp])
-        km = distance_km.get(longest_cp, 0)
+        valid_checkpoints = [cp for cp in checkpoints if cp in distance_km]
+        if not valid_checkpoints:
+            continue
 
-        pace = finish_time / km  # sekund na km
+        longest_cp = max(valid_checkpoints, key=lambda cp: distance_km[cp])
+        finish_time = float(checkpoints[longest_cp])
+        km = distance_km[longest_cp]
+
+        pace = finish_time / km
         pace_min = int(pace // 60)
         pace_sec = int(pace % 60)
         pace_formatted = f"{pace_min}:{pace_sec:02d} min/km"
@@ -53,4 +56,3 @@ def leaderboard():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-

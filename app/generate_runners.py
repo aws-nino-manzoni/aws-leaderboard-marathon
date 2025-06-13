@@ -2,7 +2,7 @@ import requests
 import random
 import time
 
-API_URL = "http://<YOUR-PUBLIC-IP>:5000/submit"  # 🔁 Zamenjaj s tvojim IP naslovom
+API_URL = "http://<YOUR-PUBLIC-IP>:5000/submit"  # change
 
 NAMES = ["Nino", "Tina", "Matej", "Anja", "Jure", "Sara", "Luka", "Petra", "David", "Eva"]
 DISTANCES = ["10km", "21km", "42km"]
@@ -14,28 +14,24 @@ CHECKPOINTS_BY_DISTANCE = {
 
 def generate_runner_data():
     name = random.choice(NAMES) + str(random.randint(1, 999))
-    age = random.randint(18, 60)
-    gender = random.choice(["M", "F"])
     distance = random.choice(DISTANCES)
-    start_number = random.randint(1000, 9999)
-
     checkpoints = CHECKPOINTS_BY_DISTANCE[distance]
     times = {}
-
     total_time = 0
+
     for cp in checkpoints:
         if cp == "5km":
-            segment_time = random.randint(16*60, 50*60)
+            segment_time = random.randint(16 * 60, 50 * 60)
         elif cp == "10km":
-            segment_time = random.randint(18*60, 45*60)
+            segment_time = random.randint(18 * 60, 45 * 60)
         elif cp == "21km":
-            segment_time = random.randint(40*60, 80*60)
+            segment_time = random.randint(40 * 60, 80 * 60)
         elif cp == "30km":
-            segment_time = random.randint(30*60, 60*60)
+            segment_time = random.randint(30 * 60, 60 * 60)
         elif cp == "finish":
-            segment_time = random.randint(35*60, 70*60)
+            segment_time = random.randint(35 * 60, 70 * 60)
         else:
-            segment_time = random.randint(10*60, 20*60)
+            segment_time = random.randint(10 * 60, 20 * 60)
 
         total_time += segment_time
         times[cp] = total_time
@@ -44,6 +40,7 @@ def generate_runner_data():
         "name": name,
         "checkpoints": times
     }
+
 
 def send_checkpoints(runner):
     name = runner["name"]

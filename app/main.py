@@ -6,13 +6,16 @@ r = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
 @app.route('/submit', methods=['POST'])
 def submit():
-    data = request.json
-    name = data['name']
-    checkpoint = data['checkpoint']
-    time = float(data['time'])
+    try:
+        data = request.json
+        name = data['name']
+        checkpoint = data['checkpoint']
+        time_val = float(data['time'])
 
-    r.hset(f'runner:{name}', checkpoint, time)
-    return jsonify({'message': f'Checkpoint {checkpoint} recorded for {name}'}), 200
+        r.hset(f'runner:{name}', checkpoint, time_val)
+        return jsonify({'message': f'Checkpoint {checkpoint} recorded for {name}'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/leaderboard', methods=['GET'])
 def leaderboard():

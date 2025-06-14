@@ -11,7 +11,7 @@ MYSQL_CONFIG = {
     "host": "marathon-db.cz4kumcau3h2.eu-central-1.rds.amazonaws.com",
     "user": "admin",
     "password": "rdsmysql",
-    "database": "marathon"
+    "database": "leaderboard_db"
 }
 
 names = ["Nino", "Eva", "Sara", "Luka", "Tina", "Anja", "David", "Petra", "Jure", "Matej", "Ana"]

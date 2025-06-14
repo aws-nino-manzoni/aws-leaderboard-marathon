@@ -6,7 +6,7 @@ import io
 app = Flask(__name__)
 
 # POSODOBI IP, če se spremeni Redis EC2
-r = redis.Redis(host='10.0.X.X', port=6379, decode_responses=True)
+r = redis.Redis(host='10.0.2.190', port=6379, decode_responses=True)
 
 distance_km = {
     "5km": 5,

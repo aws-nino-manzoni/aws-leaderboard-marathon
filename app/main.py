@@ -1,9 +1,18 @@
 from flask import Flask, request, jsonify, render_template, Response
+import pymysql
 import redis
 import csv
 import io
 
 app = Flask(__name__)
+
+# MySQL povezava (RDS)
+db = pymysql.connect(
+    host='marathon-db.cz4kumcau3h2.eu-central-1.rds.amazonaws.com',
+    user='admin',
+    password='rdsmysql',
+    database='leaderboard_db'
+)
 
 # POSODOBI IP, če se spremeni Redis EC2
 r = redis.Redis(host='10.0.2.190', port=6379, decode_responses=True)
@@ -22,11 +31,23 @@ def submit():
         data = request.get_json()
         name = data['name']
         checkpoint = data['checkpoint']
-        time = data['time']
-        r.hset(f"runner:{name}", checkpoint, time)
+        time_val = float(data['time'])
+
+        # Redis zapis
+        r.hset(f"runner:{name}", checkpoint, time_val)
+
+        # MySQL zapis
+        with db.cursor() as cursor:
+            cursor.execute(
+                "INSERT INTO checkpoints (runner_name, checkpoint, time_seconds) VALUES (%s, %s, %s)",
+                (name, checkpoint, time_val)
+            )
+        db.commit()
+
         return jsonify({"message": f"Checkpoint {checkpoint} recorded for {name}"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/leaderboard', methods=['GET'])
 def leaderboard():

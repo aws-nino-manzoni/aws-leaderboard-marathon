@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render-template
 import redis
 
 app = Flask(__name__)
@@ -56,6 +56,10 @@ def leaderboard():
 
     sorted_runners = sorted(runners, key=lambda x: x['total_time_sec'])
     return jsonify(sorted_runners), 200
+
+@app.route('/leaderboard.html')
+def leaderboard_page():
+    return render_template('leaderboard.html')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

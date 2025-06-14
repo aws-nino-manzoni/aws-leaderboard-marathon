@@ -1,63 +1,89 @@
-import requests
 import random
+import requests
+import argparse
 import time
+import pymysql
 
-API_URL = "http://52.59.234.124:5000/submit" # Javni IP Flask
+API_URL = "http://52.59.234.124:5000/submit"
 
-NAMES = ["Nino", "Tina", "Matej", "Anja", "Jure", "Sara", "Luka", "Petra", "David", "Eva", "Ana"]
-DISTANCES = ["10km", "21km", "42km"]
-CHECKPOINTS_BY_DISTANCE = {
-    "10km": ["5km", "10km"],
-    "21km": ["5km", "10km", "21km"],
-    "42km": ["5km", "10km", "21km", "30km", "finish"]
+# MySQL povezava
+MYSQL_CONFIG = {
+    "host": "marathon-db.cz4kumcau3h2.eu-central-1.rds.amazonaws.com",
+    "user": "admin",
+    "password": "rdsmysql",
+    "database": "marathon"
 }
 
-def generate_runner_data():
-    name = random.choice(NAMES) + str(random.randint(1, 999))
-    distance = random.choice(DISTANCES)
-    checkpoints = CHECKPOINTS_BY_DISTANCE[distance]
-    times = {}
-    total_time = 0
+names = ["Nino", "Eva", "Sara", "Luka", "Tina", "Anja", "David", "Petra", "Jure", "Matej", "Ana"]
+checkpoints = ["5km", "10km", "21km", "30km", "finish"]
+checkpoint_dist = {
+    "5km": 5,
+    "10km": 5,
+    "21km": 11,
+    "30km": 9,
+    "finish": 12.2
+}
 
-    for cp in checkpoints:
-        if cp == "5km":
-            segment_time = random.randint(16 * 60, 50 * 60)
-        elif cp == "10km":
-            segment_time = random.randint(18 * 60, 45 * 60)
-        elif cp == "21km":
-            segment_time = random.randint(40 * 60, 80 * 60)
-        elif cp == "30km":
-            segment_time = random.randint(30 * 60, 60 * 60)
-        elif cp == "finish":
-            segment_time = random.randint(35 * 60, 70 * 60)
-        else:
-            segment_time = random.randint(10 * 60, 20 * 60)
+def reset_mysql():
+    try:
+        conn = pymysql.connect(**MYSQL_CONFIG)
+        with conn.cursor() as cursor:
+            cursor.execute("DELETE FROM checkpoints")
+        conn.commit()
+        conn.close()
+        print("✅ MySQL: Vsi podatki izbrisani.")
+    except Exception as e:
+        print("⚠️ Napaka pri brisanju podatkov iz MySQL:", e)
 
-        total_time += segment_time
-        print(f"{name} | {cp}: segment={segment_time}, total={total_time}")
-        times[cp] = total_time
-
-    return {
-        "name": name,
-        "checkpoints": times
-    }
+def reset_redis():
+    try:
+        requests.post("http://localhost:5000/reset")  # dodaj to pot v main.py, če še ni!
+        print("✅ Redis: Vsi podatki izbrisani.")
+    except Exception as e:
+        print("⚠️ Napaka pri brisanju podatkov iz Redis:", e)
 
 def send_checkpoints(runner):
     name = runner["name"]
-    for cp, t in runner["checkpoints"].items():
+    total_time = 0
+    for cp in runner["checkpoints"]:
+        segment = random.randint(4 * 60, 10 * 60) * checkpoint_dist[cp]
+        total_time += segment
         payload = {
             "name": name,
             "checkpoint": cp,
-            "time": t
+            "time_seconds": total_time
         }
         try:
             res = requests.post(API_URL, json=payload)
-            print(f"Submitted {name} - {cp}: {res.status_code} | {res.text}")
+            print(f"Submitted {name} - {cp}: {res.status_code} | {res.json()}")
         except Exception as e:
-            print(f"Error submitting {name} - {cp}: {e}")
+            print(f"❌ Error submitting {name} - {cp}: {e}")
 
-if __name__ == "__main__":
-    for _ in range(20):
-        r = generate_runner_data()
+def generate_runners(count=30):
+    for _ in range(count):
+        name = f"{random.choice(names)}{random.randint(1, 999)}"
+        r = {
+            "name": name,
+            "checkpoints": []
+        }
+        r["checkpoints"].append("5km")
+        r["checkpoints"].append("10km")
+        if random.random() < 0.7:
+            r["checkpoints"].append("21km")
+        if random.random() < 0.5:
+            r["checkpoints"].append("30km")
+        if "30km" in r["checkpoints"] or random.random() < 0.3:
+            r["checkpoints"].append("finish")
         send_checkpoints(r)
         time.sleep(0.2)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--reset", action="store_true", help="Pobriši vse stare podatke pred generacijo")
+    args = parser.parse_args()
+
+    if args.reset:
+        reset_mysql()
+        reset_redis()
+
+    generate_runners()

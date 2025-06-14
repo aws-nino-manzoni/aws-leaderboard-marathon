@@ -48,7 +48,6 @@ def submit():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route('/leaderboard', methods=['GET'])
 def leaderboard():
     runners = []
@@ -110,6 +109,26 @@ def leaderboard_csv():
 @app.route('/leaderboard.html')
 def leaderboard_page():
     return render_template('leaderboard.html')
+
+@app.route('/reset', methods=['POST'])
+def reset_all():
+    # Redis reset
+    redis_deleted = 0
+    for key in r.scan_iter("runner:*"):
+        r.delete(key)
+        redis_deleted += 1
+
+    # MySQL reset
+    try:
+        with db.cursor() as cursor:
+            cursor.execute("DELETE FROM checkpoints")
+        db.commit()
+    except Exception as e:
+        return jsonify({"error": f"MySQL error: {str(e)}"}), 500
+
+    return jsonify({
+        "message": f"Reset complete. Redis: {redis_deleted} runners deleted. MySQL: all rows deleted."
+    }), 200
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)

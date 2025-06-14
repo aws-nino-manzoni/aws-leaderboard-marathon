@@ -37,7 +37,7 @@ def reset_mysql():
 
 def reset_redis():
     try:
-        requests.post("http://localhost:5000/reset")  # Flask /reset endpoint
+        requests.post("http://localhost:5000/reset")  # dodaj to pot v main.py, če še ni!
         print("✅ Redis: Vsi podatki izbrisani.")
     except Exception as e:
         print("⚠️ Napaka pri brisanju podatkov iz Redis:", e)
@@ -46,35 +46,40 @@ def send_checkpoints(runner):
     name = runner["name"]
     total_time = 0
     for cp in runner["checkpoints"]:
-        segment_time = random.randint(4 * 60, 10 * 60) * checkpoint_dist[cp]
-        total_time += int(segment_time)
+        segment = random.randint(4 * 60, 10 * 60) * checkpoint_dist[cp]
+        total_time += segment
         payload = {
             "name": name,
             "checkpoint": cp,
-            "time": total_time  # Backend pričakuje "time"
+            "time_seconds": checkpoint_time
         }
         try:
             res = requests.post(API_URL, json=payload)
             print(f"Submitted {name} - {cp}: {res.status_code} | {res.json()}")
         except Exception as e:
-            print(f"❌ Napaka pri pošiljanju {name} - {cp}: {e}")
+            print(f"❌ Error submitting {name} - {cp}: {e}")
 
 def generate_runners(count=30):
     for _ in range(count):
         name = f"{random.choice(names)}{random.randint(1, 999)}"
-        runner = {"name": name, "checkpoints": ["5km", "10km"]}
+        r = {
+            "name": name,
+            "checkpoints": []
+        }
+        r["checkpoints"].append("5km")
+        r["checkpoints"].append("10km")
         if random.random() < 0.7:
-            runner["checkpoints"].append("21km")
+            r["checkpoints"].append("21km")
         if random.random() < 0.5:
-            runner["checkpoints"].append("30km")
-        if "30km" in runner["checkpoints"] or random.random() < 0.3:
-            runner["checkpoints"].append("finish")
-        send_checkpoints(runner)
-        time.sleep(0.2)  # rahla zakasnitev
+            r["checkpoints"].append("30km")
+        if "30km" in r["checkpoints"] or random.random() < 0.3:
+            r["checkpoints"].append("finish")
+        send_checkpoints(r)
+        time.sleep(0.2)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--reset", action="store_true", help="Pobriši vse obstoječe podatke pred generacijo")
+    parser.add_argument("--reset", action="store_true", help="Pobriši vse stare podatke pred generacijo")
     args = parser.parse_args()
 
     if args.reset:

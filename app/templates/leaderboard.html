@@ -10,6 +10,7 @@
         th { background-color: #3498db; color: white; }
         tr:nth-child(even) { background-color: #f2f2f2; }
         h1 { color: #2c3e50; }
+        .small { font-size: 0.9em; color: #666; }
     </style>
 </head>
 <body>
@@ -22,11 +23,11 @@
                 <th>Distance (km)</th>
                 <th>Total Time (s)</th>
                 <th>Pace</th>
+                <th>Checkpoints</th>
             </tr>
         </thead>
         <tbody>
             <!-- Data will be inserted here -->
-			<!-- Data will be inserted here -->
         </tbody>
     </table>
 
@@ -36,6 +37,11 @@
             .then(data => {
                 const tbody = document.querySelector('#leaderboard tbody');
                 data.forEach((runner, index) => {
+                    const cpDetails = Object.entries(runner.checkpoints)
+                        .sort((a, b) => parseFloat(a[1]) - parseFloat(b[1]))
+                        .map(([cp, time]) => `${cp}: ${parseFloat(time).toFixed(0)}s`)
+                        .join('<br>');
+
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${index + 1}</td>
@@ -43,6 +49,7 @@
                         <td>${runner.distance_km}</td>
                         <td>${runner.total_time_sec}</td>
                         <td>${runner.pace_formatted}</td>
+                        <td class="small">${cpDetails}</td>
                     `;
                     tbody.appendChild(row);
                 });
@@ -50,7 +57,7 @@
             .catch(error => {
                 const tbody = document.querySelector('#leaderboard tbody');
                 const row = document.createElement('tr');
-                row.innerHTML = `<td colspan="5">Error loading data</td>`;
+                row.innerHTML = `<td colspan="6">Error loading data</td>`;
                 tbody.appendChild(row);
                 console.error('Error fetching leaderboard data:', error);
             });

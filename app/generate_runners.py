@@ -2,9 +2,9 @@ import requests
 import random
 import time
 
-API_URL = "http://3.124.1.132:5000/submit"  # ⬅️ Zamenjaj s svojim IP naslovom
+API_URL = "http://52.59.234.124:5000/submit" # Javni IP Flask
 
-NAMES = ["Nino", "Tina", "Matej", "Anja", "Jure", "Sara", "Luka", "Petra", "David", "Eva"]
+NAMES = ["Nino", "Tina", "Matej", "Anja", "Jure", "Sara", "Luka", "Petra", "David", "Eva", "Ana"]
 DISTANCES = ["10km", "21km", "42km"]
 CHECKPOINTS_BY_DISTANCE = {
     "10km": ["5km", "10km"],

@@ -3,7 +3,6 @@ import pymysql
 import redis
 import csv
 import io
-import time
 
 app = Flask(__name__)
 
@@ -130,48 +129,6 @@ def reset_all():
     return jsonify({
         "message": f"Reset complete. Redis: {redis_deleted} runners deleted. MySQL: all rows deleted."
     }), 200
-    
-@app.route('/leaderboard/mysql', methods=['GET'])
-def leaderboard_mysql():
-    start_time = time.time()
-    try:
-        with db.cursor() as cursor:
-            cursor.execute("SELECT runner_name, checkpoint, time_seconds FROM checkpoints")
-            rows = cursor.fetchall()
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-    runners = {}
-    for name, checkpoint, time_sec in rows:
-        if checkpoint in distance_km:
-            runners.setdefault(name, {})[checkpoint] = float(time_sec)
-
-    result = []
-    for name, checkpoints in runners.items():
-        longest_cp = max(checkpoints.keys(), key=lambda cp: distance_km.get(cp, 0))
-        finish_time = checkpoints[longest_cp]
-        km = distance_km[longest_cp]
-        if km == 0:
-            continue
-        pace = finish_time / km
-        pace_min = int(pace // 60)
-        pace_sec = int(pace % 60)
-        pace_formatted = f"{pace_min}:{pace_sec:02d} min/km"
-
-        result.append({
-            "name": name,
-            "checkpoints": checkpoints,
-            "total_time_sec": finish_time,
-            "distance_km": km,
-            "pace_sec_per_km": round(pace, 2),
-            "pace_formatted": pace_formatted
-        })
-
-    duration = round((time.time() - start_time) * 1000, 2)  # v ms
-    return jsonify({
-        "time_ms": duration,
-        "runners": sorted(result, key=lambda x: x['total_time_sec'])
-    }), 200    
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)

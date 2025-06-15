@@ -50,7 +50,6 @@ def submit():
 
 @app.route('/leaderboard/redis', methods=['GET'])
 def leaderboard_redis():
-    start = time.time()
     runners = []
     for key in r.scan_iter("runner:*"):
         name = key.split(":")[1]
@@ -78,8 +77,8 @@ def leaderboard_redis():
         })
 
     sorted_runners = sorted(runners, key=lambda x: x['total_time_sec'])
-    duration = round((time.time() - start) * 1000)
-    return jsonify({"runners": sorted_runners, "query_time_ms": duration})
+    return jsonify(sorted_runners), 200
+
 
 @app.route('/leaderboard/mysql', methods=['GET'])
 def leaderboard_mysql():

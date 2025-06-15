@@ -50,6 +50,7 @@ def submit():
 
 @app.route('/leaderboard/redis', methods=['GET'])
 def leaderboard_redis():
+    start_time = time.time()
     runners = []
     for key in r.scan_iter("runner:*"):
         name = key.split(":")[1]
@@ -77,23 +78,63 @@ def leaderboard_redis():
         })
 
     sorted_runners = sorted(runners, key=lambda x: x['total_time_sec'])
+    elapsed = round((time.time() - start_time) * 1000, 2)
+    if request.args.get("time"):
+        return jsonify({"query_time_ms": elapsed, "runners": sorted_runners})
     return jsonify(sorted_runners), 200
-
-
+    
 @app.route('/leaderboard/mysql', methods=['GET'])
 def leaderboard_mysql():
-    start = time.time()
-    runners = {}
-    with db.cursor() as cursor:
-        cursor.execute("SELECT runner_name, checkpoint, time_seconds FROM checkpoints")
-        for name, cp, t in cursor.fetchall():
-            if name not in runners:
-                runners[name] = {}
-            if cp in distance_km:
-                runners[name][cp] = float(t)
+    start_time = time.time()
+    try:
+        with db.cursor() as cursor:
+            cursor.execute("SELECT runner_name, checkpoint, time_seconds FROM checkpoints")
+            rows = cursor.fetchall()
+        runners = {}
+        for name, cp, time_val in rows:
+            if cp not in distance_km:
+                continue
+            runners.setdefault(name, {})[cp] = float(time_val)
 
-    result = []
-    for name, checkpoints in runners.items():
+        leaderboard = []
+        for name, checkpoints in runners.items():
+            longest_cp = max(checkpoints.keys(), key=lambda cp: distance_km.get(cp, 0))
+            finish_time = checkpoints[longest_cp]
+            km = distance_km.get(longest_cp, 0)
+            if km == 0:
+                continue
+            pace = finish_time / km
+            pace_min = int(pace // 60)
+            pace_sec = int(pace % 60)
+            pace_formatted = f"{pace_min}:{pace_sec:02d} min/km"
+
+            leaderboard.append({
+                "name": name,
+                "checkpoints": checkpoints,
+                "total_time_sec": finish_time,
+                "distance_km": km,
+                "pace_sec_per_km": round(pace, 2),
+                "pace_formatted": pace_formatted
+            })
+
+        sorted_runners = sorted(leaderboard, key=lambda x: x['total_time_sec'])
+        elapsed = round((time.time() - start_time) * 1000, 2)
+        if request.args.get("time"):
+            return jsonify({"query_time_ms": elapsed, "runners": sorted_runners})
+        return jsonify(sorted_runners), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/leaderboard/csv', methods=['GET'])
+def leaderboard_csv():
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Name', 'Distance (km)', 'Total Time (s)', 'Pace (min/km)', 'Checkpoints'])
+
+    for key in r.scan_iter("runner:*"):
+        name = key.split(":")[1]
+        checkpoints = r.hgetall(key)
+        checkpoints = {cp: float(t) for cp, t in checkpoints.items() if cp in distance_km}
         if not checkpoints:
             continue
         longest_cp = max(checkpoints.keys(), key=lambda cp: distance_km.get(cp, 0))
@@ -105,19 +146,11 @@ def leaderboard_mysql():
         pace_min = int(pace // 60)
         pace_sec = int(pace % 60)
         pace_formatted = f"{pace_min}:{pace_sec:02d} min/km"
+        cp_str = "; ".join([f"{k}: {int(v)}s" for k, v in checkpoints.items()])
+        writer.writerow([name, km, int(finish_time), pace_formatted, cp_str])
 
-        result.append({
-            "name": name,
-            "checkpoints": checkpoints,
-            "total_time_sec": finish_time,
-            "distance_km": km,
-            "pace_sec_per_km": round(pace, 2),
-            "pace_formatted": pace_formatted
-        })
-
-    sorted_runners = sorted(result, key=lambda x: x['total_time_sec'])
-    duration = round((time.time() - start) * 1000)
-    return jsonify({"runners": sorted_runners, "query_time_ms": duration})
+    output.seek(0)
+    return Response(output, mimetype="text/csv", headers={"Content-Disposition": "attachment;filename=leaderboard.csv"})
 
 @app.route('/leaderboard.html')
 def leaderboard_html():

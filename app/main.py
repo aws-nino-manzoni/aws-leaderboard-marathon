@@ -10,12 +10,12 @@ import subprocess
 app = Flask(__name__)
 
 # MySQL povezava (RDS)
-#db = pymysql.connect(
-#    host='marathon-db.cz4kumcau3h2.eu-central-1.rds.amazonaws.com',
-#    user='admin',
-#    password='rdsmysql',
-#    database='leaderboard_db'
-#)
+db = pymysql.connect(
+    host='marathon-db.cz4kumcau3h2.eu-central-1.rds.amazonaws.com',
+    user='admin',
+    password='rdsmysql',
+    database='leaderboard_db'
+)
 
 # Redis povezava
 r = redis.Redis(host='10.0.2.190', port=6379, decode_responses=True)

@@ -51,7 +51,7 @@ def send_checkpoints(runner):
         payload = {
             "name": name,
             "checkpoint": cp,
-            "time": total_time  # Backend pričakuje "time"
+            "time": time
         }
         try:
             res = requests.post(API_URL, json=payload)

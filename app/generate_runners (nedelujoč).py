@@ -1,12 +1,12 @@
-
 import random
 import requests
 import argparse
 import time
 import pymysql
 
-API_URL = "http://35.159.107.207:5000/submit"
+API_URL = "http://52.59.234.124:5000/submit"
 
+# MySQL povezava
 MYSQL_CONFIG = {
     "host": "marathon-db.cz4kumcau3h2.eu-central-1.rds.amazonaws.com",
     "user": "admin",
@@ -37,7 +37,7 @@ def reset_mysql():
 
 def reset_redis():
     try:
-        requests.post("http://localhost:5000/reset")
+        requests.post("http://localhost:5000/reset")  # Flask /reset endpoint
         print("✅ Redis: Vsi podatki izbrisani.")
     except Exception as e:
         print("⚠️ Napaka pri brisanju podatkov iz Redis:", e)
@@ -62,24 +62,19 @@ def send_checkpoints(runner):
 def generate_runners(count=30):
     for _ in range(count):
         name = f"{random.choice(names)}{random.randint(1, 999)}"
-        r = {
-            "name": name,
-            "checkpoints": []
-        }
-        r["checkpoints"].append("5km")
-        r["checkpoints"].append("10km")
+        runner = {"name": name, "checkpoints": ["5km", "10km"]}
         if random.random() < 0.7:
-            r["checkpoints"].append("21km")
+            runner["checkpoints"].append("21km")
         if random.random() < 0.5:
-            r["checkpoints"].append("30km")
-        if "30km" in r["checkpoints"] or random.random() < 0.3:
-            r["checkpoints"].append("finish")
-        send_checkpoints(r)
-        time.sleep(0.2)
+            runner["checkpoints"].append("30km")
+        if "30km" in runner["checkpoints"] or random.random() < 0.3:
+            runner["checkpoints"].append("finish")
+        send_checkpoints(runner)
+        time.sleep(0.2)  # rahla zakasnitev
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--reset", action="store_true", help="Pobriši vse stare podatke pred generacijo")
+    parser.add_argument("--reset", action="store_true", help="Pobriši vse obstoječe podatke pred generacijo")
     args = parser.parse_args()
 
     if args.reset:

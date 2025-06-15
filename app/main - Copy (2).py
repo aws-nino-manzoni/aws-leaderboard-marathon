@@ -15,15 +15,15 @@ db = pymysql.connect(
     database='leaderboard_db'
 )
 
-# Redis povezava
+# POSODOBI IP, če se spremeni Redis EC2
 r = redis.Redis(host='10.0.2.190', port=6379, decode_responses=True)
 
 distance_km = {
     "5km": 5,
-    "10km": 5,
-    "21km": 11,
-    "30km": 9,
-    "finish": 12.2
+    "10km": 10,
+    "21km": 21.1,
+    "30km": 30,
+    "finish": 42.2
 }
 
 @app.route('/submit', methods=['POST'])
@@ -34,8 +34,10 @@ def submit():
         checkpoint = data['checkpoint']
         time_val = float(data['time'])
 
+        # Redis zapis
         r.hset(f"runner:{name}", checkpoint, time_val)
 
+        # MySQL zapis
         with db.cursor() as cursor:
             cursor.execute(
                 "INSERT INTO checkpoints (runner_name, checkpoint, time_seconds) VALUES (%s, %s, %s)",
@@ -47,9 +49,8 @@ def submit():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/leaderboard/redis', methods=['GET'])
-def leaderboard_redis():
-    start = time.time()
+@app.route('/leaderboard', methods=['GET'])
+def leaderboard():
     runners = []
     for key in r.scan_iter("runner:*"):
         name = key.split(":")[1]
@@ -77,28 +78,79 @@ def leaderboard_redis():
         })
 
     sorted_runners = sorted(runners, key=lambda x: x['total_time_sec'])
-    duration = round((time.time() - start) * 1000)
-    return jsonify({"runners": sorted_runners, "query_time_ms": duration})
+    return jsonify(sorted_runners), 200
 
-@app.route('/leaderboard/mysql', methods=['GET'])
-def leaderboard_mysql():
-    start = time.time()
-    runners = {}
-    with db.cursor() as cursor:
-        cursor.execute("SELECT runner_name, checkpoint, time_seconds FROM checkpoints")
-        for name, cp, t in cursor.fetchall():
-            if name not in runners:
-                runners[name] = {}
-            if cp in distance_km:
-                runners[name][cp] = float(t)
+@app.route('/leaderboard/csv', methods=['GET'])
+def leaderboard_csv():
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Name', 'Distance (km)', 'Total Time (s)', 'Pace (min/km)', 'Checkpoints'])
 
-    result = []
-    for name, checkpoints in runners.items():
+    for key in r.scan_iter("runner:*"):
+        name = key.split(":")[1]
+        checkpoints = r.hgetall(key)
+        checkpoints = {cp: float(t) for cp, t in checkpoints.items() if cp in distance_km}
         if not checkpoints:
             continue
         longest_cp = max(checkpoints.keys(), key=lambda cp: distance_km.get(cp, 0))
         finish_time = checkpoints[longest_cp]
         km = distance_km.get(longest_cp, 0)
+        if km == 0:
+            continue
+        pace = finish_time / km
+        pace_min = int(pace // 60)
+        pace_sec = int(pace % 60)
+        pace_formatted = f"{pace_min}:{pace_sec:02d} min/km"
+        cp_str = "; ".join([f"{k}: {int(v)}s" for k, v in checkpoints.items()])
+        writer.writerow([name, km, int(finish_time), pace_formatted, cp_str])
+
+    output.seek(0)
+    return Response(output, mimetype="text/csv", headers={"Content-Disposition": "attachment;filename=leaderboard.csv"})
+
+@app.route('/leaderboard.html')
+def leaderboard_page():
+    return render_template('leaderboard.html')
+
+@app.route('/reset', methods=['POST'])
+def reset_all():
+    # Redis reset
+    redis_deleted = 0
+    for key in r.scan_iter("runner:*"):
+        r.delete(key)
+        redis_deleted += 1
+
+    # MySQL reset
+    try:
+        with db.cursor() as cursor:
+            cursor.execute("DELETE FROM checkpoints")
+        db.commit()
+    except Exception as e:
+        return jsonify({"error": f"MySQL error: {str(e)}"}), 500
+
+    return jsonify({
+        "message": f"Reset complete. Redis: {redis_deleted} runners deleted. MySQL: all rows deleted."
+    }), 200
+    
+@app.route('/leaderboard/mysql', methods=['GET'])
+def leaderboard_mysql():
+    start_time = time.time()
+    try:
+        with db.cursor() as cursor:
+            cursor.execute("SELECT runner_name, checkpoint, time_seconds FROM checkpoints")
+            rows = cursor.fetchall()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    runners = {}
+    for name, checkpoint, time_sec in rows:
+        if checkpoint in distance_km:
+            runners.setdefault(name, {})[checkpoint] = float(time_sec)
+
+    result = []
+    for name, checkpoints in runners.items():
+        longest_cp = max(checkpoints.keys(), key=lambda cp: distance_km.get(cp, 0))
+        finish_time = checkpoints[longest_cp]
+        km = distance_km[longest_cp]
         if km == 0:
             continue
         pace = finish_time / km
@@ -115,35 +167,11 @@ def leaderboard_mysql():
             "pace_formatted": pace_formatted
         })
 
-    sorted_runners = sorted(result, key=lambda x: x['total_time_sec'])
-    duration = round((time.time() - start) * 1000)
-    return jsonify({"runners": sorted_runners, "query_time_ms": duration})
-
-@app.route('/leaderboard.html')
-def leaderboard_html():
-    return render_template('leaderboard.html')
-
-@app.route('/leaderboard/compare')
-def leaderboard_compare():
-    return render_template('leaderboard-compare.html')
-
-@app.route('/reset', methods=['POST'])
-def reset_all():
-    redis_deleted = 0
-    for key in r.scan_iter("runner:*"):
-        r.delete(key)
-        redis_deleted += 1
-
-    try:
-        with db.cursor() as cursor:
-            cursor.execute("DELETE FROM checkpoints")
-        db.commit()
-    except Exception as e:
-        return jsonify({"error": f"MySQL error: {str(e)}"}), 500
-
+    duration = round((time.time() - start_time) * 1000, 2)  # v ms
     return jsonify({
-        "message": f"Reset complete. Redis: {redis_deleted} runners deleted. MySQL: all rows deleted."
-    }), 200
+        "time_ms": duration,
+        "runners": sorted(result, key=lambda x: x['total_time_sec'])
+    }), 200    
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)

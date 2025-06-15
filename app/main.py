@@ -52,9 +52,16 @@ def submit():
 def leaderboard_redis():
     start_time = time.time()
     runners = []
-    for key in r.scan_iter("runner:*"):
+    pipeline = r.pipeline()
+    runner_keys = list(r.scan_iter("runner:*"))
+
+    # Pošlji vse hgetall klice v enem batchu
+    for key in runner_keys:
+        pipeline.hgetall(key)
+    results = pipeline.execute()
+
+    for key, checkpoints in zip(runner_keys, results):
         name = key.split(":")[1]
-        checkpoints = r.hgetall(key)
         checkpoints = {cp: float(t) for cp, t in checkpoints.items() if cp in distance_km}
         if not checkpoints:
             continue

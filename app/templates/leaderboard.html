@@ -28,6 +28,10 @@
 </head>
 <body>
     <h1>Marathon Leaderboard</h1>
+	    <div style="margin-bottom: 20px;">
+        <button onclick="resetData()">🔁 Resetiraj podatke</button>
+        <button onclick="generateData()">🚀 Generiraj tekače</button>
+    </div>
     <div id="query-info" style="margin-bottom: 20px; font-weight: bold;"></div>
     <table id="leaderboard">
         <thead>
@@ -44,11 +48,6 @@
             <!-- Data will be inserted here -->
         </tbody>
     </table>
-
-    <div style="margin-bottom: 20px;">
-        <button onclick="resetData()">🔁 Resetiraj podatke</button>
-        <button onclick="generateData()">🚀 Generiraj tekače</button>
-    </div>
 
 	<script>
 		async function loadLeaderboard() {

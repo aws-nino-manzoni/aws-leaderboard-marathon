@@ -5,6 +5,7 @@ import redis
 import csv
 import io
 import time
+import subprocess
 
 app = Flask(__name__)
 
@@ -184,6 +185,15 @@ def reset_all():
     return jsonify({
         "message": f"Reset complete. Redis: {redis_deleted} runners deleted. MySQL: all rows deleted."
     }), 200
+
+@app.route('/generate', methods=['POST'])
+def generate_data():
+    try:
+        subprocess.run(["python3", "generate_runners.py", "--reset"], check=True)
+        return jsonify({"message": "Data generated successfully."}), 200
+    except subprocess.CalledProcessError as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)

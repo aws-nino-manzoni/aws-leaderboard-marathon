@@ -45,6 +45,44 @@
         </tbody>
     </table>
 
+    <div style="margin-bottom: 20px;">
+        <button onclick="resetData()">🔁 Resetiraj podatke</button>
+        <button onclick="generateData()">🚀 Generiraj tekače</button>
+    </div>
+
+	<script>
+		async function loadLeaderboard() {
+			// ... (obstoječa funkcija kot prej)
+		}
+
+		async function resetData() {
+			try {
+				const res = await fetch('/reset', { method: 'POST' });
+				const json = await res.json();
+				alert(json.message || "Reset complete.");
+				loadLeaderboard();
+			} catch (err) {
+				alert("Napaka pri resetiranju.");
+				console.error(err);
+			}
+		}
+
+		async function generateData() {
+			try {
+				const res = await fetch('/generate', { method: 'POST' });
+				const json = await res.json();
+				alert(json.message || "Generacija uspešna.");
+				loadLeaderboard();
+			} catch (err) {
+				alert("Napaka pri generaciji.");
+				console.error(err);
+			}
+		}
+
+		loadLeaderboard();
+	</script>
+
+
     <script>
         async function loadLeaderboard() {
             try {

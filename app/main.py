@@ -10,12 +10,12 @@ import subprocess
 app = Flask(__name__)
 
 # MySQL povezava (RDS)
-db = pymysql.connect(
-    host='marathon-db.cz4kumcau3h2.eu-central-1.rds.amazonaws.com',
-    user='admin',
-    password='rdsmysql',
-    database='leaderboard_db'
-)
+#db = pymysql.connect(
+#    host='marathon-db.cz4kumcau3h2.eu-central-1.rds.amazonaws.com',
+#    user='admin',
+#    password='rdsmysql',
+#    database='leaderboard_db'
+#)
 
 # Redis povezava
 r = redis.Redis(host='10.0.2.190', port=6379, decode_responses=True)
@@ -36,18 +36,28 @@ def submit():
         checkpoint = data['checkpoint']
         time_val = float(data['time'])
 
+        # Redis zapis
         r.hset(f"runner:{name}", checkpoint, time_val)
 
-        with db.cursor() as cursor:
+        # MySQL zapis
+        conn = pymysql.connect(
+            host='marathon-db.cz4kumcau3h2.eu-central-1.rds.amazonaws.com',
+            user='admin',
+            password='rdsmysql',
+            database='leaderboard_db'
+        )
+        with conn.cursor() as cursor:
             cursor.execute(
-                "INSERT INTO checkpoints (runner_name, checkpoint, time_seconds, recorded_at) VALUES (%s, %s, %s, %s)",
-                (name, checkpoint, time_val, datetime.utcnow())
+                "INSERT INTO checkpoints (runner_name, checkpoint, time_seconds) VALUES (%s, %s, %s)",
+                (name, checkpoint, time_val)
             )
-        db.commit()
+        conn.commit()
+        conn.close()
 
         return jsonify({"message": f"Checkpoint {checkpoint} recorded for {name}"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/leaderboard/redis', methods=['GET'])
 def leaderboard_redis():

@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, render_template, Response
+from datetime import datetime
 import pymysql
 import redis
 import csv
@@ -38,8 +39,8 @@ def submit():
 
         with db.cursor() as cursor:
             cursor.execute(
-                "INSERT INTO checkpoints (runner_name, checkpoint, time_seconds) VALUES (%s, %s, %s)",
-                (name, checkpoint, time_val)
+                "INSERT INTO checkpoints (runner_name, checkpoint, time_seconds, recorded_at) VALUES (%s, %s, %s, %s)",
+                (name, checkpoint, time_val, datetime.utcnow())
             )
         db.commit()
 

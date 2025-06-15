@@ -59,7 +59,7 @@ def send_checkpoints(runner):
         except Exception as e:
             print(f"❌ Napaka pri pošiljanju {name} - {cp}: {e}")
 
-def generate_runners(count=30):
+def generate_runners(count=100):
     for _ in range(count):
         name = f"{random.choice(names)}{random.randint(1, 999)}"
         r = {

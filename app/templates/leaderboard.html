@@ -28,13 +28,7 @@
 </head>
 <body>
     <h1>Marathon Leaderboard</h1>
-
-    <div class="controls">
-        <button onclick="resetData()">Resetiraj podatke</button>
-        <button onclick="generateData()">Generiraj podatke</button>
-        <div id="status"></div>
-    </div>
-
+    <div id="query-info" style="margin-bottom: 20px; font-weight: bold;"></div>
     <table id="leaderboard">
         <thead>
             <tr>
@@ -52,56 +46,45 @@
     </table>
 
     <script>
-        function loadData() {
-            fetch('/leaderboard/redis')
-                .then(response => response.json())
-                .then(data => {
-                    const tbody = document.querySelector('#leaderboard tbody');
-                    tbody.innerHTML = "";
-                    data.forEach((runner, index) => {
-                        const cpDetails = Object.entries(runner.checkpoints)
-                            .sort((a, b) => parseFloat(a[1]) - parseFloat(b[1]))
-                            .map(([cp, time]) => `${cp}: ${parseFloat(time).toFixed(0)}s`)
-                            .join('<br>');
+        async function loadLeaderboard() {
+            try {
+                const [redisRes, mysqlRes] = await Promise.all([
+                    fetch('/leaderboard/redis?time=true').then(r => r.json()),
+                    fetch('/leaderboard/mysql?time=true').then(r => r.json())
+                ]);
 
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${index + 1}</td>
-                            <td>${runner.name}</td>
-                            <td>${runner.distance_km}</td>
-                            <td>${runner.total_time_sec}</td>
-                            <td>${runner.pace_formatted}</td>
-                            <td class="small">${cpDetails}</td>
-                        `;
-                        tbody.appendChild(row);
-                    });
-                })
-                .catch(error => {
-                    const tbody = document.querySelector('#leaderboard tbody');
-                    tbody.innerHTML = `<tr><td colspan="6">Error loading data</td></tr>`;
-                    console.error('Error fetching leaderboard data:', error);
+                const tbody = document.querySelector('#leaderboard tbody');
+                tbody.innerHTML = '';
+
+                document.getElementById('query-info').innerText = 
+                    `⏱️ Query Time → Redis: ${redisRes.query_time_ms} ms | MySQL: ${mysqlRes.query_time_ms} ms`;
+
+                redisRes.runners.forEach((runner, index) => {
+                    const cpDetails = Object.entries(runner.checkpoints)
+                        .sort((a, b) => parseFloat(a[1]) - parseFloat(b[1]))
+                        .map(([cp, time]) => `${cp}: ${parseFloat(time).toFixed(0)}s`)
+                        .join('<br>');
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${runner.name}</td>
+                        <td>${runner.distance_km}</td>
+                        <td>${runner.total_time_sec}</td>
+                        <td>${runner.pace_formatted}</td>
+                        <td class="small">${cpDetails}</td>
+                    `;
+                    tbody.appendChild(row);
                 });
+            } catch (error) {
+                document.querySelector('#leaderboard tbody').innerHTML = 
+                    '<tr><td colspan="6">Error loading data</td></tr>';
+                console.error('Error:', error);
+            }
         }
 
-        function resetData() {
-            fetch('/reset', { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    document.getElementById("status").innerText = "Podatki so bili izbrisani.";
-                    loadData();
-                });
-        }
-
-        function generateData() {
-            fetch('/generate', { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    document.getElementById("status").innerText = "Podatki so bili generirani.";
-                    setTimeout(loadData, 1000); // počakamo sekundo za vnos
-                });
-        }
-
-        loadData();
+        loadLeaderboard();
     </script>
 </body>
+
 </html>

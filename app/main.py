@@ -201,7 +201,6 @@ def leaderboard_csv_mysql():
 
     output.seek(0)
     return Response(output, mimetype="text/csv", headers={"Content-Disposition": "attachment;filename=leaderboard_mysql.csv"})
-ext/csv", headers={"Content-Disposition": "attachment;filename=leaderboard.csv"})
 
 @app.route('/leaderboard.html')
 def leaderboard_html():

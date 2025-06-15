@@ -231,7 +231,7 @@ def reset_all():
 @app.route('/generate', methods=['POST'])
 def generate_data():
     try:
-        subprocess.run(["python3", "generate_runners.py", "--reset"], check=True)
+        subprocess.run(["python3", "generate_runners.py", "--reset"], check=True)  #uporabi subprocess.Popen za izvajanje v ozzadju, potrebuje dodelavo še Loading...
         return jsonify({"message": "Data generated successfully."}), 200
     except subprocess.CalledProcessError as e:
         return jsonify({"error": str(e)}), 500

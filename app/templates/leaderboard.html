@@ -14,10 +14,11 @@
         .buttons { margin-bottom: 20px; }
         .buttons button, .buttons a, .buttons select {
             margin-right: 10px; padding: 10px 15px; font-size: 14px;
-            cursor: pointer; text-decoration: none; border: none; border-radius: 4px;
+            cursor: pointer; border: none; border-radius: 4px;
+            background-color: #3498db; color: white;
         }
-        .buttons button, .buttons a { background-color: #3498db; color: white; }
-        .buttons select { background-color: white; color: #333; border: 1px solid #ccc; }
+        .buttons a { text-decoration: none; display: inline-block; }
+        .query-time { margin-top: 10px; font-size: 14px; color: #333; }
     </style>
 </head>
 <body>
@@ -25,13 +26,16 @@
     <div class="buttons">
         <button onclick="generateData()">Generate Data</button>
         <button onclick="resetData()">Reset Data</button>
-        <a id="export-redis" href="/leaderboard/csv/redis" target="_blank">Export Redis CSV</a>
-        <a id="export-mysql" href="/leaderboard/csv/mysql" target="_blank">Export MySQL CSV</a>
-        <select id="data-source" onchange="loadData()">
+        <a href="/leaderboard/csv/redis" target="_blank">Export Redis CSV</a>
+        <a href="/leaderboard/csv/mysql" target="_blank">Export MySQL CSV</a>
+        <select id="sourceSelect" onchange="loadLeaderboard()">
             <option value="redis">Redis</option>
             <option value="mysql">MySQL</option>
         </select>
     </div>
+
+    <div class="query-time" id="queryTime"></div>
+
     <table id="leaderboard">
         <thead>
             <tr>
@@ -52,25 +56,33 @@
         function generateData() {
             fetch('/generate', { method: 'POST' })
                 .then(response => response.json())
-                .then(data => loadData())
+                .then(() => loadLeaderboard())
                 .catch(err => alert("Error generating data: " + err));
         }
 
         function resetData() {
             fetch('/reset', { method: 'POST' })
                 .then(response => response.json())
-                .then(data => loadData())
+                .then(() => loadLeaderboard())
                 .catch(err => alert("Error resetting data: " + err));
         }
 
-        function loadData() {
-            const source = document.getElementById('data-source').value;
-            const url = `/leaderboard/${source}`;
-            fetch(url)
+        function loadLeaderboard() {
+            const source = document.getElementById('sourceSelect').value;
+            const tbody = document.querySelector('#leaderboard tbody');
+            const queryTimeDiv = document.getElementById('queryTime');
+
+            tbody.innerHTML = '';
+            queryTimeDiv.textContent = '';
+
+            fetch(`/leaderboard/${source}?time=true`)
                 .then(response => response.json())
                 .then(data => {
-                    const tbody = document.querySelector('#leaderboard tbody');
-                    tbody.innerHTML = '';
+                    if (data.query_time_ms) {
+                        queryTimeDiv.textContent = `Query time: ${data.query_time_ms.toFixed(2)} ms`;
+                        data = data.runners;
+                    }
+
                     data.forEach((runner, index) => {
                         const cpDetails = Object.entries(runner.checkpoints)
                             .sort((a, b) => parseFloat(a[1]) - parseFloat(b[1]))
@@ -90,8 +102,6 @@
                     });
                 })
                 .catch(error => {
-                    const tbody = document.querySelector('#leaderboard tbody');
-                    tbody.innerHTML = '';
                     const row = document.createElement('tr');
                     row.innerHTML = `<td colspan="6">Error loading data</td>`;
                     tbody.appendChild(row);
@@ -99,7 +109,8 @@
                 });
         }
 
-        window.onload = loadData;
+        // Load default (Redis) on page load
+        window.onload = loadLeaderboard;
     </script>
 </body>
 </html>

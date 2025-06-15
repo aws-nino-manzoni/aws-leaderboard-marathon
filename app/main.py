@@ -143,8 +143,8 @@ def leaderboard_mysql():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/leaderboard/csv', methods=['GET'])
-def leaderboard_csv():
+@app.route('/leaderboard/csv/redis', methods=['GET'])
+def leaderboard_csv_redis():
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(['Name', 'Distance (km)', 'Total Time (s)', 'Pace (min/km)', 'Checkpoints'])
@@ -168,7 +168,40 @@ def leaderboard_csv():
         writer.writerow([name, km, int(finish_time), pace_formatted, cp_str])
 
     output.seek(0)
-    return Response(output, mimetype="text/csv", headers={"Content-Disposition": "attachment;filename=leaderboard.csv"})
+    return Response(output, mimetype="text/csv", headers={"Content-Disposition": "attachment;filename=leaderboard_redis.csv"})
+
+@app.route('/leaderboard/csv/mysql', methods=['GET'])
+def leaderboard_csv_mysql():
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Name', 'Distance (km)', 'Total Time (s)', 'Pace (min/km)', 'Checkpoints'])
+
+    with db.cursor() as cursor:
+        cursor.execute("SELECT runner_name, checkpoint, time_seconds FROM checkpoints")
+        rows = cursor.fetchall()
+
+    runners = {}
+    for name, cp, time_val in rows:
+        if cp not in distance_km:
+            continue
+        runners.setdefault(name, {})[cp] = float(time_val)
+
+    for name, checkpoints in runners.items():
+        longest_cp = max(checkpoints.keys(), key=lambda cp: distance_km.get(cp, 0))
+        finish_time = checkpoints[longest_cp]
+        km = distance_km.get(longest_cp, 0)
+        if km == 0:
+            continue
+        pace = finish_time / km
+        pace_min = int(pace // 60)
+        pace_sec = int(pace % 60)
+        pace_formatted = f"{pace_min}:{pace_sec:02d} min/km"
+        cp_str = "; ".join([f"{k}: {int(v)}s" for k, v in checkpoints.items()])
+        writer.writerow([name, km, int(finish_time), pace_formatted, cp_str])
+
+    output.seek(0)
+    return Response(output, mimetype="text/csv", headers={"Content-Disposition": "attachment;filename=leaderboard_mysql.csv"})
+ext/csv", headers={"Content-Disposition": "attachment;filename=leaderboard.csv"})
 
 @app.route('/leaderboard.html')
 def leaderboard_html():
